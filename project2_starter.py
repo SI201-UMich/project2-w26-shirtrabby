@@ -285,6 +285,7 @@ def validate_policy_numbers(data) -> list[str]:
 
 
 # EXTRA CREDIT
+# Tracy
 def google_scholar_searcher(query):
     """
     EXTRA CREDIT
@@ -298,6 +299,38 @@ def google_scholar_searcher(query):
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
+    base_url = "https://scholar.google.com/scholar"
+
+    params = {
+        "q": query
+    }
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    response = requests.get(base_url, params=params, headers=headers)
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    results = []
+
+    entries = soup.find_all("div", class_="gs_r")
+
+    for entry in entries:
+        title_tag = entry.find("h3")
+
+        if title_tag:
+            link_tag = title_tag.find("a")
+
+            if link_tag:
+                title = link_tag.get_text(strip=True)
+                link = link_tag.get("href", "")
+
+                results.append((title, link))
+
+    return results[:10]  
+
     pass
     # ==============================
     # YOUR CODE ENDS HERE
