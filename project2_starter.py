@@ -98,6 +98,98 @@ def get_listing_details(listing_id) -> dict:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    html_path = os.path.join(base_dir, "html_files", f"listing_{listing_id}.html")
+
+    with open(html_path, "r", encoding="utf-8-sig") as f:
+        soup = BeautifulSoup(f.read(), "html.parser")
+
+    full_text = soup.get_text(" ", strip=True)
+
+    # --------------------
+    # policy_number
+    # --------------------
+    policy_number = "Pending"
+
+    valid_policy_match = re.search(r"\b(20\d{2}-00\d{4}STR|STR-\d{7})\b", full_text)
+    if valid_policy_match:
+        policy_number = valid_policy_match.group(1)
+    else:
+        if re.search(r"\bexempt\b", full_text, re.IGNORECASE):
+            policy_number = "Exempt"
+        elif re.search(r"\bpending\b", full_text, re.IGNORECASE):
+            policy_number = "Pending"
+        else:
+            possible_policy = re.search(
+                r"(policy|license|registration|permit)[^A-Za-z0-9]{0,10}([A-Za-z0-9-]+)",
+                full_text,
+                re.IGNORECASE
+            )
+            if possible_policy:
+                raw_value = possible_policy.group(2).strip()
+                if raw_value.lower() == "exempt":
+                    policy_number = "Exempt"
+                elif raw_value.lower() == "pending":
+                    policy_number = "Pending"
+                else:
+                    policy_number = raw_value
+    
+    host_type = "Superhost" if re.search(r"Superhost", full_text, re.IGNORECASE) else "regular"
+    host_name = ""
+
+    host_match = re.search(r"Hosted by\s+([A-Za-z]+(?:\s+(?:and|&)\s+[A-Za-z]+)?)", full_text, re.IGNORECASE)
+    if host_match:
+        host_name = host_match.group(1).strip()
+        host_name = re.sub(r"\band\b", "And", host_name, flags=re.IGNORECASE)
+    else:
+        possible_headers = soup.find_all(["h1", "h2", "h3", "span", "div"])
+        for tag in possible_headers:
+            text = tag.get_text(" ", strip=True)
+            match = re.search(r"Hosted by\s+([A-Za-z]+(?:\s+(?:and|&)\s+[A-Za-z]+)?)", text, re.IGNORECASE)
+            if match:
+                host_name = match.group(1).strip()
+                host_name = re.sub(r"\band\b", "And", host_name, flags=re.IGNORECASE)
+                break
+    
+        room_type = "Entire Room"
+
+    subtitle_text = ""
+    for tag in soup.find_all(["h1", "h2", "span", "div"]):
+        text = tag.get_text(" ", strip=True)
+        if "Private" in text or "Shared" in text or "Entire" in text:
+            subtitle_text += " " + text
+
+    if re.search(r"Private", subtitle_text, re.IGNORECASE):
+        room_type = "Private Room"
+    elif re.search(r"Shared", subtitle_text, re.IGNORECASE):
+        room_type = "Shared Room"
+    else:
+        room_type = "Entire Room"
+
+    location_rating = 0.0
+
+    location_match = re.search(r"Location\s*([0-5]\.\d)", full_text, re.IGNORECASE)
+    if location_match:
+        location_rating = float(location_match.group(1))
+    else:
+        all_text_chunks = soup.stripped_strings
+        chunks = list(all_text_chunks)
+        for i, chunk in enumerate(chunks):
+            if chunk.lower() == "location" and i + 1 < len(chunks):
+                num_match = re.search(r"([0-5]\.\d)", chunks[i + 1])
+                if num_match:
+                    location_rating = float(num_match.group(1))
+                    break
+
+    return {
+        listing_id: {
+            "policy_number": policy_number,
+            "host_type": host_type,
+            "host_name": host_name,
+            "room_type": room_type,
+            "location_rating": location_rating
+        }
+    }
     pass
     # ==============================
     # YOUR CODE ENDS HERE
