@@ -26,6 +26,7 @@ If you are getting "encoding errors" while trying to open, read, or write from a
     encoding="utf-8-sig"
 """
 
+# Tracy
 
 def load_listing_results(html_path) -> list[tuple]:
     """
@@ -41,11 +42,38 @@ def load_listing_results(html_path) -> list[tuple]:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
+    with open(html_path, "r", encoding="utf-8-sig") as f:
+        soup = BeautifulSoup(f.read(),"htmal.parser")
+
+    listings = []
+    links = soup.find_all("a", href=True)
+
+    for link in links:
+        href = link.get("href", "")
+        match = re.search(r"/rooms/(\d+)", href)
+        if match:
+            listing_id = match.group(1)
+
+            title = link.get_text(" ", strip=True)
+
+            if not title:
+                parent = link.find_parent()
+                if parent:
+                    title = parent.get_text(" ", strip=True)
+
+            if title:
+                listing_tuple = (title, listing_id)
+                if listing_tuple not in listings:
+                    listings.append(listing_tuple)
+
+    return listings
     pass
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
 
+
+# Tracy
 
 def get_listing_details(listing_id) -> dict:
     """
