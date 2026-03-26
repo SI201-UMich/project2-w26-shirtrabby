@@ -1,7 +1,7 @@
 # SI 201 HW4 (Library Checkout System)
-# Your name:
-# Your student id:
-# Your email:
+# Your name:Tracy Yuhei Ni, Gabby Jialu Tang, Shirley Shirui Huang
+# Your student id: 04647754, 
+# Your email: yuheini@umich.edu, 
 # Who or what you worked with on this homework (including generative AI like ChatGPT):
 # If you worked with generative AI also add a statement for how you used it.
 # e.g.:
