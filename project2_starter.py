@@ -43,7 +43,7 @@ def load_listing_results(html_path) -> list[tuple]:
     # YOUR CODE STARTS HERE
     # ==============================
     with open(html_path, "r", encoding="utf-8-sig") as f:
-        soup = BeautifulSoup(f.read(),"html.parser")
+        soup = BeautifulSoup(f.read(), "html.parser")
 
     listings = []
     links = soup.find_all("a", href=True)
@@ -51,6 +51,7 @@ def load_listing_results(html_path) -> list[tuple]:
     for link in links:
         href = link.get("href", "")
         match = re.search(r"/rooms/(\d+)", href)
+
         if match:
             listing_id = match.group(1)
 
@@ -63,6 +64,7 @@ def load_listing_results(html_path) -> list[tuple]:
 
             if title:
                 listing_tuple = (title, listing_id)
+
                 if listing_tuple not in listings:
                     listings.append(listing_tuple)
 
@@ -153,33 +155,17 @@ def get_listing_details(listing_id) -> dict:
     
         room_type = "Entire Room"
 
-    subtitle_text = ""
-    for tag in soup.find_all(["h1", "h2", "span", "div"]):
+    room_type = "Entire Room"  # default
+
+    for tag in soup.find_all(["h1", "h2", "span"]):
         text = tag.get_text(" ", strip=True)
-        if "Private" in text or "Shared" in text or "Entire" in text:
-            subtitle_text += " " + text
 
-    if re.search(r"Private", subtitle_text, re.IGNORECASE):
-        room_type = "Private Room"
-    elif re.search(r"Shared", subtitle_text, re.IGNORECASE):
-        room_type = "Shared Room"
-    else:
-        room_type = "Entire Room"
-
-    location_rating = 0.0
-
-    location_match = re.search(r"Location\s*([0-5]\.\d)", full_text, re.IGNORECASE)
-    if location_match:
-        location_rating = float(location_match.group(1))
-    else:
-        all_text_chunks = soup.stripped_strings
-        chunks = list(all_text_chunks)
-        for i, chunk in enumerate(chunks):
-            if chunk.lower() == "location" and i + 1 < len(chunks):
-                num_match = re.search(r"([0-5]\.\d)", chunks[i + 1])
-                if num_match:
-                    location_rating = float(num_match.group(1))
-                    break
+        if "Private" in text:
+            room_type = "Private Room"
+            break
+        elif "Shared" in text:
+            room_type = "Shared Room"
+            break
 
     return {
         listing_id: {
@@ -266,7 +252,7 @@ def output_csv(data, filename) -> None:
     #sort data by location_rating, highest first so reverse
 
     # open file as writing mode
-    with open(filename, "w", newline="", encoding = "utf-8") as f:
+    with open(filename, "w", newline="", encoding = "utf-8-sig") as f:
         writer = csv.writer(f)
 
         #write header row
