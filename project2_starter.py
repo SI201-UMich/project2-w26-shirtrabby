@@ -57,6 +57,9 @@ def load_listing_results(html_path) -> list[tuple]:
 
             title = link.get_text(" ", strip=True)
 
+
+            title = re.split(r"\$\d+|\d\.\d|\(", title)[0].strip()
+
             if not title:
                 parent = link.find_parent()
                 if parent:
@@ -69,7 +72,7 @@ def load_listing_results(html_path) -> list[tuple]:
                     listings.append(listing_tuple)
 
     return listings
-    pass
+
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
@@ -166,6 +169,13 @@ def get_listing_details(listing_id) -> dict:
         elif "Shared" in text:
             room_type = "Shared Room"
             break
+    location_rating = 0.0
+
+    rating_match = re.search(r"\b([0-9]\.[0-9])\b", full_text)
+    
+    if rating_match:
+        location_rating = float(rating_match.group(1))
+
 
     return {
         listing_id: {
@@ -176,7 +186,7 @@ def get_listing_details(listing_id) -> dict:
             "location_rating": location_rating
         }
     }
-    pass
+    
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
@@ -291,7 +301,31 @@ def avg_location_rating_by_room_type(data) -> dict:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
-    pass
+    totals = {}
+    counts = {}
+
+    for row in data:
+        room_type = row[5]
+        rating = row[6]
+
+        # skip missing ratings
+        if rating == 0.0:
+            continue
+
+        if room_type not in totals:
+            totals[room_type] = 0
+            counts[room_type] = 0
+
+        totals[room_type] += rating
+        counts[room_type] += 1
+
+    averages = {}
+    for room_type in totals:
+        averages[room_type] = round(totals[room_type] / counts[room_type], 1)
+
+    return averages
+
+    
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
@@ -312,6 +346,23 @@ def validate_policy_numbers(data) -> list[str]:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
+    invalid = []
+
+    pattern = r"^(20\d{2}-00\d{4}STR|STR-\d{7})$"
+
+    for row in data:
+        listing_id = row[1]
+        policy = row[2]
+
+        
+        if policy in ["Pending", "Exempt"]:
+            continue
+
+        
+        if not re.match(pattern, policy):
+            invalid.append(listing_id)
+
+    return invalid
     pass
     # ==============================
     # YOUR CODE ENDS HERE
