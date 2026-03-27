@@ -46,7 +46,7 @@ def load_listing_results(html_path) -> list[tuple]:
         soup = BeautifulSoup(f.read(), "html.parser")
 
     listings = []
-    links = soup.find_all("a", href=True)
+    links = soup.find_all("a", href=re.compile(r"^/rooms/\d+"))
 
     for link in links:
         href = link.get("href", "")
