@@ -300,27 +300,21 @@ def avg_location_rating_by_room_type(data) -> dict:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
-    totals = {}
-    counts = {}
+    room_type_ratings = {}
 
-    for row in data:
-        room_type = row[5]
-        rating = row[6]
+    for listing in data:
+        room_type = listing["room_type"]
+        location_rating = float(listing["location_rating"])
 
-        # skip missing ratings
-        if rating == 0.0:
-            continue
+        if room_type not in room_type_ratings:
+            room_type_ratings[room_type] = []
 
-        if room_type not in totals:
-            totals[room_type] = 0
-            counts[room_type] = 0
-
-        totals[room_type] += rating
-        counts[room_type] += 1
+        room_type_ratings[room_type].append(location_rating)
 
     averages = {}
-    for room_type in totals:
-        averages[room_type] = round(totals[room_type] / counts[room_type], 1)
+    for room_type in room_type_ratings:
+        ratings = room_type_ratings[room_type]
+        averages[room_type] = round(sum(ratings) / len(ratings), 1)
 
     return averages
 
@@ -345,23 +339,15 @@ def validate_policy_numbers(data) -> list[str]:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
-    invalid = []
+    invalid_numbers = []
 
-    pattern = r"^(20\d{2}-00\d{4}STR|STR-\d{7})$"
+    for listing in data:
+        policy_number = listing["listing_policy_code"]
 
-    for row in data:
-        listing_id = row[1]
-        policy = row[2]
+        if not policy_number.isdigit() or len(policy_number) != 7:
+            invalid_numbers.append(policy_number)
 
-        
-        if policy in ["Pending", "Exempt"]:
-            continue
-
-        
-        if not re.match(pattern, policy):
-            invalid.append(listing_id)
-
-    return invalid
+    return invalid_numbers
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
