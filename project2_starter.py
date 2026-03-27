@@ -55,10 +55,7 @@ def load_listing_results(html_path) -> list[tuple]:
         if match:
             listing_id = match.group(1)
 
-            title = link.get_text(" ", strip=True)
-
-
-            title = re.split(r"\$\d+|\d\.\d|\(", title)[0].strip()
+            title = link.get_text("\n", strip=True).split("\n")[0].strip()
 
             if not title:
                 parent = link.find_parent()
@@ -171,8 +168,8 @@ def get_listing_details(listing_id) -> dict:
             break
     location_rating = 0.0
 
-    rating_match = re.search(r"\b([0-9]\.[0-9])\b", full_text)
-    
+    rating_match = re.search(r"([0-9]\.[0-9])", full_text)
+
     if rating_match:
         location_rating = float(rating_match.group(1))
 
