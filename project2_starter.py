@@ -12,6 +12,8 @@
 # --- ARGUMENTS & EXPECTED RETURN VALUES PROVIDED --- #
 # --- SEE INSTRUCTIONS FOR FULL DETAILS ON METHOD IMPLEMENTATION --- #
 
+from unittest import result
+
 from bs4 import BeautifulSoup
 import re
 import os
@@ -360,7 +362,6 @@ def validate_policy_numbers(data) -> list[str]:
             invalid.append(listing_id)
 
     return invalid
-    pass
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
@@ -413,7 +414,6 @@ def google_scholar_searcher(query):
 
     return results[:10]  
 
-    pass
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
@@ -479,12 +479,17 @@ class TestCases(unittest.TestCase):
     def test_avg_location_rating_by_room_type(self):
         # TODO: Call avg_location_rating_by_room_type() and save the output.
         # TODO: Check that the average for "Private Room" is 4.9.
-        pass
+        result = avg_location_rating_by_room_type(self.detailed_data)
+
+        self.assertEqual(result["Private Room"], 4.9)
 
     def test_validate_policy_numbers(self):
         # TODO: Call validate_policy_numbers() on detailed_data and save the result into a variable invalid_listings.
         # TODO: Check that the list contains exactly "16204265" for this dataset.
-        pass
+        invalid_listings = validate_policy_numbers(self.detailed_data)
+
+        self.assertEqual(invalid_listings, ["16204265"])
+        
 
 
 def main():
