@@ -263,12 +263,13 @@ def output_csv(data, filename) -> None:
     # YOUR CODE STARTS HERE
     # ==============================
     sorted_data = sorted(data, key=lambda x: x[6], reverse=True)
+    #sort data by location_rating, highest first so reverse
 
-    # Step 2: open file for writing
-    with open(filename, "w", newline="", encoding="utf-8-sig") as f:
+    # open file as writing mode
+    with open(filename, "w", newline="", encoding = "utf-8") as f:
         writer = csv.writer(f)
 
-        # Step 3: write header row (must match assignment exactly)
+        #write header row
         writer.writerow([
             "Listing Title",
             "Listing ID",
@@ -279,7 +280,7 @@ def output_csv(data, filename) -> None:
             "Location Rating"
         ])
 
-        # Step 4: write each row of data
+        #write each row of data
         for row in sorted_data:
             writer.writerow(row)
     # ==============================
