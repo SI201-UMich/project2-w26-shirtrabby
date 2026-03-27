@@ -55,12 +55,12 @@ def load_listing_results(html_path) -> list[tuple]:
         if match:
             listing_id = match.group(1)
 
-            title = link.get_text("\n", strip=True).split("\n")[0].strip()
-
-            if not title:
-                parent = link.find_parent()
-                if parent:
-                    title = parent.get_text(" ", strip=True)
+            parent = link.find_parent()
+            if parent:
+                full_text = parent.get_text("\n", strip=True)
+                title = full_text.split("\n")[0].strip()
+            else:
+                continue
 
             if title:
                 listing_tuple = (title, listing_id)
