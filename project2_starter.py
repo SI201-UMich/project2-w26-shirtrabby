@@ -1,7 +1,7 @@
 # SI 201 HW4 (Library Checkout System)
 # Your name:Tracy Yuhei Ni, Gabby Jialu Tang, Shirley Shirui Huang
-# Your student id: 04647754, 
-# Your email: yuheini@umich.edu, 
+# Your student id: 04647754, 27755983
+# Your email: yuheini@umich.edu, gabbylu@umich.edu
 # Who or what you worked with on this homework (including generative AI like ChatGPT):
 # If you worked with generative AI also add a statement for how you used it.
 # e.g.:
@@ -43,7 +43,7 @@ def load_listing_results(html_path) -> list[tuple]:
     # YOUR CODE STARTS HERE
     # ==============================
     with open(html_path, "r", encoding="utf-8-sig") as f:
-        soup = BeautifulSoup(f.read(),"htmal.parser")
+        soup = BeautifulSoup(f.read(),"html.parser")
 
     listings = []
     links = soup.find_all("a", href=True)
@@ -211,7 +211,35 @@ def create_listing_database(html_path) -> list[tuple]:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
-    pass
+    listings = load_listing_results(html_path)
+
+    dataresult = []
+
+    for title, listing_id in listings:
+        details_dict = get_listing_details(listing_id) #get detailed info using listing_id
+        details = details_dict[listing_id] #access inner dict
+
+        #then extract each required field
+        policy_number = details["policy_number"]
+        host_type = details["host_type"]
+        host_name = details["host_name"]
+        room_type = details["room_type"]
+        location_rating = details["location_rating"]
+
+        #construct a tuple
+        row = (
+            title,
+            listing_id,
+            policy_number,
+            host_type,
+            host_name,
+            room_type,
+            location_rating
+        )
+
+        dataresult.append(row)
+
+    return dataresult
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
@@ -234,7 +262,26 @@ def output_csv(data, filename) -> None:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
-    pass
+    sorted_data = sorted(data, key=lambda x: x[6], reverse=True)
+
+    # Step 2: open file for writing
+    with open(filename, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.writer(f)
+
+        # Step 3: write header row (must match assignment exactly)
+        writer.writerow([
+            "Listing Title",
+            "Listing ID",
+            "Policy Number",
+            "Host Type",
+            "Host Name",
+            "Room Type",
+            "Location Rating"
+        ])
+
+        # Step 4: write each row of data
+        for row in sorted_data:
+            writer.writerow(row)
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
