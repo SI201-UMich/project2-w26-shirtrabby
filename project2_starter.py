@@ -48,20 +48,34 @@ def load_listing_results(html_path) -> list[tuple]:
         soup = BeautifulSoup(f.read(), "html.parser")
 
     listings = []
-    links = soup.find_all("a", href=re.compile(r"^/rooms/\d+"))
 
-    for link in links:
+    for link in soup.find_all("a", href=True):
         href = link.get("href", "")
         match = re.search(r"/rooms/(\d+)", href)
 
-        if match:
-            listing_id = match.group(1)
-            title = link.get_text(strip=True)
+        if not match:
+            continue
 
-            if title:
-                listing_tuple = (title, listing_id)
-                if listing_tuple not in listings:
-                    listings.append(listing_tuple)
+        listing_id = match.group(1)
+
+        title = link.get("aria-label", "").strip()
+
+        if not title:
+            title = link.get_text(" ", strip=True)
+
+        if not title:
+            parent = link.find_parent()
+            if parent:
+                text_parts = list(parent.stripped_strings)
+                for part in text_parts:
+                    if " in " in part:
+                        title = part.strip()
+                        break
+
+        if title:
+            listing_tuple = (title, listing_id)
+            if listing_tuple not in listings:
+                listings.append(listing_tuple)
 
     return listings
 
@@ -103,71 +117,42 @@ def get_listing_details(listing_id) -> dict:
 
     full_text = soup.get_text(" ", strip=True)
 
+
     # --------------------
     # policy_number
     # --------------------
-    policy_number = "Pending"
+    policy_match = re.search(r"\b(STR-\d{7}|20\d{2}-00\d{4}STR|\d{8})\b", full_text)
+    if policy_match:
+        policy_number = policy_match.group(1)
+    elif re.search(r"\bexempt\b", full_text, re.IGNORECASE):
+        policy_number = "Exempt"
+    elif re.search(r"\bpending\b", full_text, re.IGNORECASE):
+        policy_number = "Pending"
 
-    valid_policy_match = re.search(r"\b(20\d{2}-00\d{4}STR|STR-\d{7})\b", full_text)
-    if valid_policy_match:
-        policy_number = valid_policy_match.group(1)
-    else:
-        if re.search(r"\bexempt\b", full_text, re.IGNORECASE):
-            policy_number = "Exempt"
-        elif re.search(r"\bpending\b", full_text, re.IGNORECASE):
-            policy_number = "Pending"
-        else:
-            possible_policy = re.search(
-                r"(policy|license|registration|permit)[^A-Za-z0-9]{0,10}([A-Za-z0-9-]+)",
-                full_text,
-                re.IGNORECASE
-            )
-            if possible_policy:
-                raw_value = possible_policy.group(2).strip()
-                if raw_value.lower() == "exempt":
-                    policy_number = "Exempt"
-                elif raw_value.lower() == "pending":
-                    policy_number = "Pending"
-                else:
-                    policy_number = raw_value
-    
     host_type = "Superhost" if re.search(r"Superhost", full_text, re.IGNORECASE) else "regular"
-    host_name = ""
 
-    host_match = re.search(r"Hosted by\s+([A-Za-z]+(?:\s+(?:and|&)\s+[A-Za-z]+)?)", full_text, re.IGNORECASE)
+    host_name = ""
+    host_match = re.search(r"Hosted by\s+([A-Za-z]+(?:\s+[A-Za-z]+)*)", full_text, re.IGNORECASE)
     if host_match:
         host_name = host_match.group(1).strip()
-        host_name = re.sub(r"\band\b", "And", host_name, flags=re.IGNORECASE)
-    else:
-        possible_headers = soup.find_all(["h1", "h2", "h3", "span", "div"])
-        for tag in possible_headers:
-            text = tag.get_text(" ", strip=True)
-            match = re.search(r"Hosted by\s+([A-Za-z]+(?:\s+(?:and|&)\s+[A-Za-z]+)?)", text, re.IGNORECASE)
-            if match:
-                host_name = match.group(1).strip()
-                host_name = re.sub(r"\band\b", "And", host_name, flags=re.IGNORECASE)
-                break
-    
+
+    room_type = "Entire Room"
+    if re.search(r"Private room", full_text, re.IGNORECASE):
+        room_type = "Private Room"
+    elif re.search(r"Shared room", full_text, re.IGNORECASE):
+        room_type = "Shared Room"
+    elif re.search(r"Entire (home|place|rental unit|guest suite|guesthouse|loft|condo|apartment)", full_text, re.IGNORECASE):
         room_type = "Entire Room"
 
-    room_type = "Entire Room"  # default
-
-    for tag in soup.find_all(["h1", "h2", "span"]):
-        text = tag.get_text(" ", strip=True)
-
-        if "Private" in text:
-            room_type = "Private Room"
-            break
-        elif "Shared" in text:
-            room_type = "Shared Room"
-            break
     location_rating = 0.0
 
-    rating_match = re.search(r"\b([0-9]\.[0-9])\b", full_text)
+    rating_match = re.search(r"Location\s*([0-9]\.[0-9])", full_text, re.IGNORECASE)
+
+    if not rating_match:
+        rating_match = re.search(r"([0-9]\.[0-9])\s*Location", full_text, re.IGNORECASE)
 
     if rating_match:
         location_rating = float(rating_match.group(1))
-
 
     return {
         listing_id: {
@@ -297,7 +282,7 @@ def avg_location_rating_by_room_type(data) -> dict:
 
     for listing in data:
         room_type = listing[5]
-        location_rating = float(listing[6])
+        location_rating = listing[6]
 
         if location_rating == 0.0:
             continue
@@ -309,8 +294,7 @@ def avg_location_rating_by_room_type(data) -> dict:
 
     averages = {}
     for room_type in room_type_ratings:
-        ratings = room_type_ratings[room_type]
-        averages[room_type] = round(sum(ratings) / len(ratings), 1)
+        averages[room_type] = round(sum(room_type_ratings[room_type]) / len(room_type_ratings[room_type]), 1)
 
     return averages
 
