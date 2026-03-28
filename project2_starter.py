@@ -56,17 +56,10 @@ def load_listing_results(html_path) -> list[tuple]:
 
         if match:
             listing_id = match.group(1)
-
-            parent = link.find_parent("div")
-            if parent:
-                full_text = parent.get_text("\n", strip=True)
-                title = full_text.split("\n")[0].strip()
-            else:
-                continue
+            title = link.get_text(strip=True)
 
             if title:
                 listing_tuple = (title, listing_id)
-
                 if listing_tuple not in listings:
                     listings.append(listing_tuple)
 
@@ -303,8 +296,11 @@ def avg_location_rating_by_room_type(data) -> dict:
     room_type_ratings = {}
 
     for listing in data:
-        room_type = listing["room_type"]
-        location_rating = float(listing["location_rating"])
+        room_type = listing[5]
+        location_rating = float(listing[6])
+
+        if location_rating == 0.0:
+            continue
 
         if room_type not in room_type_ratings:
             room_type_ratings[room_type] = []
@@ -342,10 +338,14 @@ def validate_policy_numbers(data) -> list[str]:
     invalid_numbers = []
 
     for listing in data:
-        policy_number = listing["listing_policy_code"]
+        listing_id = listing[1]
+        policy_number = listing[2]
 
-        if not policy_number.isdigit() or len(policy_number) != 7:
-            invalid_numbers.append(policy_number)
+        if policy_number in ["Pending", "Exempt"]:
+            continue
+
+        if not re.fullmatch(r"(STR-\d{7}|20\d{2}-00\d{4}STR)", policy_number):
+            invalid_numbers.append(listing_id)
 
     return invalid_numbers
     # ==============================
