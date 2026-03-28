@@ -48,34 +48,39 @@ def load_listing_results(html_path) -> list[tuple]:
         soup = BeautifulSoup(f.read(), "html.parser")
 
     listings = []
+    seen_ids = set()
 
     for link in soup.find_all("a", href=True):
         href = link.get("href", "")
         match = re.search(r"/rooms/(\d+)", href)
-
         if not match:
             continue
 
         listing_id = match.group(1)
+        if listing_id in seen_ids:
+            continue
 
         title = link.get("aria-label", "").strip()
 
         if not title:
-            parent = link.find_parent()
+            for text in link.stripped_strings:
+                text = text.strip()
+                if " in " in text:
+                    title = text
+                    break
+
+        if not title:
+            parent = link.parent
             if parent:
-                text_parts = list(parent.stripped_strings)
-                for part in text_parts:
-                    if " in " in part:
-                        title = part.strip()
+                for text in parent.stripped_strings:
+                    text = text.strip()
+                    if " in " in text:
+                        title = text
                         break
 
         if title:
-            listing_tuple = (title, listing_id)
-            if listing_tuple not in listings:
-                listings.append(listing_tuple)
-
-    print(len(listings))
-    print(listings)
+            listings.append((title, listing_id))
+            seen_ids.add(listing_id)
 
     return listings
 
@@ -121,37 +126,38 @@ def get_listing_details(listing_id) -> dict:
     # --------------------
     # policy_number
     # --------------------
-    policy_match = re.search(r"\b(STR-\d{7}|20\d{2}-00\d{4}STR|\d{8})\b", full_text)
+    policy_number = ""
+    policy_match = re.search(
+        r"(?:license|registration|policy)\s*(?:number|no\.?)?\s*[:\-]?\s*"
+        r"(STR-\d{7}|20\d{2}-00\d{4}STR|\d{8})",
+        full_text,
+        re.IGNORECASE
+    )
+
     if policy_match:
         policy_number = policy_match.group(1)
-    elif re.search(r"\bexempt\b", full_text, re.IGNORECASE):
+    elif re.search(r"(?:license|registration|policy).*exempt", full_text, re.IGNORECASE):
         policy_number = "Exempt"
-    elif re.search(r"\bpending\b", full_text, re.IGNORECASE):
+    elif re.search(r"(?:license|registration|policy).*pending", full_text, re.IGNORECASE):
         policy_number = "Pending"
 
-    host_type = "Superhost" if re.search(r"Superhost", full_text, re.IGNORECASE) else "regular"
+    host_type = "Superhost" if re.search(r"\bSuperhost\b", full_text, re.IGNORECASE) else "regular"
 
     host_name = ""
     host_match = re.search(r"Hosted by\s+([A-Za-z]+(?:\s+[A-Za-z]+)*)", full_text, re.IGNORECASE)
     if host_match:
         host_name = host_match.group(1).strip()
 
-    room_type = "Entire Room"
+    room_type = ""
 
-    room_text = soup.get_text(" ", strip=True)
-
-    if listing_id == "1944564":
-        print(room_text)
-
-    if re.search(r"\bShared room\b", room_text, re.IGNORECASE):
-        room_type = "Shared Room"
-    elif re.search(r"\bPrivate room\b", room_text, re.IGNORECASE):
-        room_type = "Private Room"
-    elif re.search(r"\bEntire (home|place|guest suite|guesthouse|loft|rental unit|apartment|condo)\b", room_text, re.IGNORECASE):
+    if re.search(r"\bEntire (?:home|place|guest suite|guesthouse|loft|rental unit|apartment|condo)\b", full_text, re.IGNORECASE):
         room_type = "Entire Room"
+    elif re.search(r"\bPrivate room\b", full_text, re.IGNORECASE):
+        room_type = "Private Room"
+    elif re.search(r"\bShared room\b", full_text, re.IGNORECASE):
+        room_type = "Shared Room"
 
     location_rating = 0.0
-
     rating_match = re.search(r"Location\s*([0-9]\.[0-9])", full_text, re.IGNORECASE)
 
     if not rating_match:
@@ -195,17 +201,15 @@ def create_listing_database(html_path) -> list[tuple]:
     dataresult = []
 
     for title, listing_id in listings:
-        details_dict = get_listing_details(listing_id) #get detailed info using listing_id
-        details = details_dict[listing_id] #access inner dict
+        details_dict = get_listing_details(listing_id) 
+        details = details_dict[listing_id] 
 
-        #then extract each required field
         policy_number = details["policy_number"]
         host_type = details["host_type"]
         host_name = details["host_name"]
         room_type = details["room_type"]
         location_rating = details["location_rating"]
 
-        #construct a tuple
         row = (
             title,
             listing_id,
