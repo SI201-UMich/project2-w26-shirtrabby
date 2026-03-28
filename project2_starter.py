@@ -74,6 +74,9 @@ def load_listing_results(html_path) -> list[tuple]:
             if listing_tuple not in listings:
                 listings.append(listing_tuple)
 
+    print(len(listings))
+    print(listings)
+
     return listings
 
     # ==============================
@@ -137,10 +140,15 @@ def get_listing_details(listing_id) -> dict:
 
     room_text = soup.get_text(" ", strip=True)
 
+    if listing_id == "1944564":
+        print(room_text)
+
     if re.search(r"\bShared room\b", room_text, re.IGNORECASE):
         room_type = "Shared Room"
     elif re.search(r"\bPrivate room\b", room_text, re.IGNORECASE):
         room_type = "Private Room"
+    elif re.search(r"\bEntire (home|place|guest suite|guesthouse|loft|rental unit|apartment|condo)\b", room_text, re.IGNORECASE):
+        room_type = "Entire Room"
 
     location_rating = 0.0
 
