@@ -48,18 +48,15 @@ def load_listing_results(html_path) -> list[tuple]:
         soup = BeautifulSoup(f.read(), "html.parser")
 
     listings = []
-    seen_ids = set()
 
     for link in soup.find_all("a", href=True):
         href = link.get("href", "")
         match = re.search(r"/rooms/(\d+)", href)
+
         if not match:
             continue
 
         listing_id = match.group(1)
-        if listing_id in seen_ids:
-            continue
-
         title = link.get("aria-label", "").strip()
 
         if not title:
@@ -69,18 +66,15 @@ def load_listing_results(html_path) -> list[tuple]:
                     title = text
                     break
 
-        if not title:
-            parent = link.parent
-            if parent:
-                for text in parent.stripped_strings:
-                    text = text.strip()
-                    if " in " in text:
-                        title = text
-                        break
+        if not title and link.parent:
+            for text in link.parent.stripped_strings:
+                text = text.strip()
+                if " in " in text:
+                    title = text
+                    break
 
         if title:
             listings.append((title, listing_id))
-            seen_ids.add(listing_id)
 
     return listings
 
@@ -129,7 +123,7 @@ def get_listing_details(listing_id) -> dict:
     policy_number = ""
     policy_match = re.search(
         r"(?:license|registration|policy)\s*(?:number|no\.?)?\s*[:\-]?\s*"
-        r"(STR-\d{7}|20\d{2}-00\d{4}STR|\d{8})",
+        r"(STR-\d{7}|20\d{2}-00\d{4}STR)",
         full_text,
         re.IGNORECASE
     )
@@ -335,10 +329,10 @@ def validate_policy_numbers(data) -> list[str]:
         listing_id = listing[1]
         policy_number = listing[2]
 
-        if policy_number in ["Pending", "Exempt"]:
+        if policy_number == "Pending" or policy_number == "Exempt":
             continue
 
-        if not re.fullmatch(r"(STR-\d{7}|20\d{2}-00\d{4}STR)", policy_number):
+        if not re.fullmatch(r"STR-\d{7}|20\d{2}-00\d{4}STR", policy_number):
             invalid_numbers.append(listing_id)
 
     return invalid_numbers
