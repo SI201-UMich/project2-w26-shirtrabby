@@ -52,7 +52,6 @@ def load_listing_results(html_path) -> list[tuple]:
     for link in soup.find_all("a", href=True):
         href = link.get("href", "")
         match = re.search(r"/rooms/(\d+)", href)
-
         if not match:
             continue
 
@@ -60,24 +59,20 @@ def load_listing_results(html_path) -> list[tuple]:
         title = link.get("aria-label", "").strip()
 
         if not title:
-            for text in link.stripped_strings:
-                text = text.strip()
-                if " in " in text:
-                    title = text
-                    break
+            text = link.get_text(" ", strip=True)
+            if " in " in text:
+                title = text
 
         if not title and link.parent:
-            for text in link.parent.stripped_strings:
-                text = text.strip()
-                if " in " in text:
-                    title = text
-                    break
+            parent_text = link.parent.get_text(" ", strip=True)
+            match_title = re.search(r"([A-Za-z ]+ in [A-Za-z ]+)", parent_text)
+            if match_title:
+                title = match_title.group(1).strip()
 
         if title:
             listings.append((title, listing_id))
 
     return listings
-
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
@@ -122,10 +117,10 @@ def get_listing_details(listing_id) -> dict:
     # --------------------
     policy_number = ""
     policy_match = re.search(
-        r"(?:license|registration|policy)\s*(?:number|no\.?)?\s*[:\-]?\s*"
-        r"(STR-\d{7}|20\d{2}-00\d{4}STR)",
-        full_text,
-        re.IGNORECASE
+    r"(?:license|registration|policy)\s*(?:number|no\.)?\s*[:\-]?\s*"
+    r"(STR-\d{7}|20\d{2}-00\d{4}STR|\d{8})",
+    full_text,
+    re.IGNORECASE
     )
 
     if policy_match:
