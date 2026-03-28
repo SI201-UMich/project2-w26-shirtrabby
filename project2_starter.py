@@ -61,9 +61,6 @@ def load_listing_results(html_path) -> list[tuple]:
         title = link.get("aria-label", "").strip()
 
         if not title:
-            title = link.get_text(" ", strip=True)
-
-        if not title:
             parent = link.find_parent()
             if parent:
                 text_parts = list(parent.stripped_strings)
@@ -137,14 +134,13 @@ def get_listing_details(listing_id) -> dict:
         host_name = host_match.group(1).strip()
 
     room_type = "Entire Room"
+
     room_text = soup.get_text(" ", strip=True)
 
     if re.search(r"\bShared room\b", room_text, re.IGNORECASE):
         room_type = "Shared Room"
     elif re.search(r"\bPrivate room\b", room_text, re.IGNORECASE):
         room_type = "Private Room"
-    elif re.search(r"\bEntire (home|place|guest suite|guesthouse|loft|rental unit|apartment|condo)\b", room_text, re.IGNORECASE):
-        room_type = "Entire Room"
 
     location_rating = 0.0
 
