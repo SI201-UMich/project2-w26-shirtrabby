@@ -58,18 +58,31 @@ def load_listing_results(html_path) -> list[tuple]:
         listing_id = match.group(1)
         title = link.get("aria-label", "").strip()
 
-        if not title:
-            text = link.get_text(" ", strip=True)
-            if " in " in text:
-                title = text
-
-        if not title and link.parent:
-            parent_text = link.parent.get_text(" ", strip=True)
-            match_title = re.search(r"([A-Za-z ]+ in [A-Za-z ]+)", parent_text)
-            if match_title:
-                title = match_title.group(1).strip()
+        candidates = []
 
         if title:
+            candidates.append(title)
+
+        for part in link.stripped_strings:
+            part = part.strip()
+            if " in " in part:
+                candidates.append(part)
+
+        parent = link.parent
+        if parent:
+            for part in parent.stripped_strings:
+                part = part.strip()
+                if " in " in part:
+                    candidates.append(part)
+
+        cleaned = []
+        for c in candidates:
+            c = c.split(" - ")[0].strip()
+            if c:
+                cleaned.append(c)
+
+        if cleaned:
+            title = min(cleaned, key=len)
             listings.append((title, listing_id))
 
     return listings
@@ -116,11 +129,12 @@ def get_listing_details(listing_id) -> dict:
     # policy_number
     # --------------------
     policy_number = ""
+
     policy_match = re.search(
-    r"(?:license|registration|policy)\s*(?:number|no\.)?\s*[:\-]?\s*"
-    r"(STR-\d{7}|20\d{2}-00\d{4}STR|\d{8})",
-    full_text,
-    re.IGNORECASE
+        r"(?:license|registration|policy)\s*(?:number|no\.)?\s*[:\-]?\s*"
+        r"(STR-\d{7}|20\d{2}-00\d{4}STR)",
+        full_text,
+        re.IGNORECASE
     )
 
     if policy_match:
@@ -129,6 +143,10 @@ def get_listing_details(listing_id) -> dict:
         policy_number = "Exempt"
     elif re.search(r"(?:license|registration|policy).*pending", full_text, re.IGNORECASE):
         policy_number = "Pending"
+    else:
+        fallback_match = re.search(r"\b\d{8}\b", full_text)
+        if fallback_match:
+            policy_number = fallback_match.group(0)
 
     host_type = "Superhost" if re.search(r"\bSuperhost\b", full_text, re.IGNORECASE) else "regular"
 
@@ -138,7 +156,6 @@ def get_listing_details(listing_id) -> dict:
         host_name = host_match.group(1).strip()
 
     room_type = ""
-
     if re.search(r"\bEntire (?:home|place|guest suite|guesthouse|loft|rental unit|apartment|condo)\b", full_text, re.IGNORECASE):
         room_type = "Entire Room"
     elif re.search(r"\bPrivate room\b", full_text, re.IGNORECASE):
