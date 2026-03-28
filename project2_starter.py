@@ -44,48 +44,58 @@ def load_listing_results(html_path) -> list[tuple]:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
+    
     with open(html_path, "r", encoding="utf-8-sig") as f:
         soup = BeautifulSoup(f.read(), "html.parser")
 
     listings = []
+    seen = set()
 
-    for link in soup.find_all("a", href=True):
+    links = soup.find_all("a", href=True)
+
+    for link in links:
         href = link.get("href", "")
         match = re.search(r"/rooms/(\d+)", href)
         if not match:
             continue
 
         listing_id = match.group(1)
-        title = link.get("aria-label", "").strip()
+        if listing_id in seen:
+            continue
+        seen.add(listing_id)
 
-        candidates = []
+        title = ""
+
+        if link.get("aria-label"):
+            title = link.get("aria-label").strip()
+
+        if not title:
+            for text in link.stripped_strings:
+                text = text.strip()
+                if " in " in text:
+                    title = text
+                    break
+
+        if not title:
+            parent = link.parent
+            while parent and not title:
+                for text in parent.stripped_strings:
+                    text = text.strip()
+                    if " in " in text:
+                        title = text
+                        break
+                parent = parent.parent
 
         if title:
-            candidates.append(title)
-
-        for part in link.stripped_strings:
-            part = part.strip()
-            if " in " in part:
-                candidates.append(part)
-
-        parent = link.parent
-        if parent:
-            for part in parent.stripped_strings:
-                part = part.strip()
-                if " in " in part:
-                    candidates.append(part)
-
-        cleaned = []
-        for c in candidates:
-            c = c.split(" - ")[0].strip()
-            if c:
-                cleaned.append(c)
-
-        if cleaned:
-            title = min(cleaned, key=len)
+            title = title.split(" - ")[0].strip()
             listings.append((title, listing_id))
 
     return listings
+
+
+
+
+
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
@@ -144,9 +154,27 @@ def get_listing_details(listing_id) -> dict:
     elif re.search(r"(?:license|registration|policy).*pending", full_text, re.IGNORECASE):
         policy_number = "Pending"
     else:
-        fallback_match = re.search(r"\b\d{8}\b", full_text)
-        if fallback_match:
-            policy_number = fallback_match.group(0)
+        policy_match = re.search(
+            r"(STR-\d{7}|20\d{2}-00\d{4}STR)",
+            full_text,
+            re.IGNORECASE
+        )
+
+        if policy_match:
+            policy_number = policy_match.group(1)
+        elif re.search(r"exempt", full_text, re.IGNORECASE):
+            policy_number = "Exempt"
+        elif re.search(r"pending", full_text, re.IGNORECASE):
+            policy_number = "Pending"
+        else:
+            
+            fallback_match = re.search(r"\b\d{8}\b", full_text)
+            if fallback_match:
+                policy_number = fallback_match.group(0)
+            else:
+                policy_number = "Pending"
+    
+    
 
     host_type = "Superhost" if re.search(r"\bSuperhost\b", full_text, re.IGNORECASE) else "regular"
 
