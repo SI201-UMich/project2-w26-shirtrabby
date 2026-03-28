@@ -28,8 +28,6 @@ If you are getting "encoding errors" while trying to open, read, or write from a
     encoding="utf-8-sig"
 """
 
-# Tracy
-
 def load_listing_results(html_path) -> list[tuple]:
     """
     Load file data from html_path and parse through it to find listing titles and listing ids.
@@ -60,9 +58,9 @@ def load_listing_results(html_path) -> list[tuple]:
             continue
 
         listing_id = match.group(1)
+
         if listing_id in seen:
             continue
-        seen.add(listing_id)
 
         title = ""
 
@@ -89,6 +87,7 @@ def load_listing_results(html_path) -> list[tuple]:
         if title:
             title = title.split(" - ")[0].strip()
             listings.append((title, listing_id))
+            seen.add(listing_id)
 
     return listings
 
@@ -140,41 +139,47 @@ def get_listing_details(listing_id) -> dict:
     # --------------------
     policy_number = ""
 
-    policy_match = re.search(
-        r"(?:license|registration|policy)\s*(?:number|no\.)?\s*[:\-]?\s*"
-        r"(STR-\d{7}|20\d{2}-00\d{4}STR)",
+    raw_policy_match = re.search(
+        r"(?:policy|license|licence|registration|permit)\s*(?:number|no\.?|#)?\s*[:\-]?\s*([A-Za-z0-9\- ]+)",
         full_text,
         re.IGNORECASE
     )
 
-    if policy_match:
-        policy_number = policy_match.group(1)
-    elif re.search(r"(?:license|registration|policy).*exempt", full_text, re.IGNORECASE):
-        policy_number = "Exempt"
-    elif re.search(r"(?:license|registration|policy).*pending", full_text, re.IGNORECASE):
-        policy_number = "Pending"
+    if raw_policy_match:
+        raw_value = raw_policy_match.group(1).strip()
+
+        raw_value = raw_value.split(" ")[0].strip()
+
+        if re.search(r"pending", raw_value, re.IGNORECASE):
+            policy_number = "Pending"
+        elif re.search(r"exempt", raw_value, re.IGNORECASE):
+            policy_number = "Exempt"
+        else:
+            policy_number = raw_value
     else:
-        policy_match = re.search(
+
+        valid_policy_match = re.search(
             r"(STR-\d{7}|20\d{2}-00\d{4}STR)",
             full_text,
             re.IGNORECASE
         )
 
-        if policy_match:
-            policy_number = policy_match.group(1)
-        elif re.search(r"exempt", full_text, re.IGNORECASE):
+        if valid_policy_match:
+            policy_number = valid_policy_match.group(1)
+        elif re.search(r"\bexempt\b", full_text, re.IGNORECASE):
             policy_number = "Exempt"
-        elif re.search(r"pending", full_text, re.IGNORECASE):
+        elif re.search(r"\bpending\b", full_text, re.IGNORECASE):
             policy_number = "Pending"
         else:
-            
-            fallback_match = re.search(r"\b\d{8}\b", full_text)
+            fallback_match = re.search(
+                r"\b(?:STR[- ]?\d+|[A-Z0-9]{6,}[-A-Z0-9]*)\b",
+                full_text
+            )
             if fallback_match:
                 policy_number = fallback_match.group(0)
             else:
                 policy_number = "Pending"
-    
-    
+
 
     host_type = "Superhost" if re.search(r"\bSuperhost\b", full_text, re.IGNORECASE) else "regular"
 
