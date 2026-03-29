@@ -1,5 +1,5 @@
 # SI 201 HW4 (Library Checkout System)
-# Your name:Tracy Yuhei Ni, Gabby Jialu Tang, Shirley Shirui Huang
+# Your name:Tracy Yuhei Ni, Gabby Jialu Tang
 # Your student id: 04647754, 27755983
 # Your email: yuheini@umich.edu, gabbylu@umich.edu
 # Who or what you worked with on this homework (including generative AI like ChatGPT):
@@ -49,40 +49,34 @@ def load_listing_results(html_path) -> list[tuple]:
     listings = []
     seen = set()
 
-    links = soup.find_all("a", href=True)
+    title_elements = soup.find_all(id=re.compile(r"^title_"))
+    
+    if title_elements:
+        for elem in title_elements:
+            listing_id = elem.get("id").replace("title_", "")
+            title = elem.get_text(strip=True).split(" - ")[0].strip()
+            
+            if listing_id not in seen:
+                listings.append((title, listing_id))
+                seen.add(listing_id)
+        return listings
 
+    links = soup.find_all("a", href=True)
     for link in links:
         href = link.get("href", "")
         match = re.search(r"/rooms/(\d+)", href)
-        if not match:
-            continue
+        if not match: continue
 
         listing_id = match.group(1)
+        if listing_id in seen: continue
 
-        if listing_id in seen:
-            continue
-
-        title = ""
-
-        if link.get("aria-label"):
-            title = link.get("aria-label").strip()
-
+        title = link.get("aria-label", "").strip()
         if not title:
             for text in link.stripped_strings:
                 text = text.strip()
-                if " in " in text:
+                if len(text) > 5 and "$" not in text and "★" not in text:
                     title = text
                     break
-
-        if not title:
-            parent = link.parent
-            while parent and not title:
-                for text in parent.stripped_strings:
-                    text = text.strip()
-                    if " in " in text:
-                        title = text
-                        break
-                parent = parent.parent
 
         if title:
             title = title.split(" - ")[0].strip()
@@ -91,16 +85,9 @@ def load_listing_results(html_path) -> list[tuple]:
 
     return listings
 
-
-
-
-
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
-
-
-# Tracy
 
 def get_listing_details(listing_id) -> dict:
     """
@@ -137,48 +124,18 @@ def get_listing_details(listing_id) -> dict:
     # --------------------
     # policy_number
     # --------------------
-    policy_number = ""
-
-    raw_policy_match = re.search(
-        r"(?:policy|license|licence|registration|permit)\s*(?:number|no\.?|#)?\s*[:\-]?\s*([A-Za-z0-9\- ]+)",
-        full_text,
-        re.IGNORECASE
-    )
-
-    if raw_policy_match:
-        raw_value = raw_policy_match.group(1).strip()
-
-        raw_value = raw_value.split(" ")[0].strip()
-
-        if re.search(r"pending", raw_value, re.IGNORECASE):
+    policy_number = "Pending"  
+    
+    match = re.search(r"(?:Policy|License|Registration)\s*number\s*[:\-]?\s*([A-Za-z0-9\-]+)", full_text, re.IGNORECASE)
+    
+    if match:
+        extracted_val = match.group(1)
+        if "pending" in extracted_val.lower():
             policy_number = "Pending"
-        elif re.search(r"exempt", raw_value, re.IGNORECASE):
+        elif "exempt" in extracted_val.lower():
             policy_number = "Exempt"
         else:
-            policy_number = raw_value
-    else:
-
-        valid_policy_match = re.search(
-            r"(STR-\d{7}|20\d{2}-00\d{4}STR)",
-            full_text,
-            re.IGNORECASE
-        )
-
-        if valid_policy_match:
-            policy_number = valid_policy_match.group(1)
-        elif re.search(r"\bexempt\b", full_text, re.IGNORECASE):
-            policy_number = "Exempt"
-        elif re.search(r"\bpending\b", full_text, re.IGNORECASE):
-            policy_number = "Pending"
-        else:
-            fallback_match = re.search(
-                r"\b(?:STR[- ]?\d+|[A-Z0-9]{6,}[-A-Z0-9]*)\b",
-                full_text
-            )
-            if fallback_match:
-                policy_number = fallback_match.group(0)
-            else:
-                policy_number = "Pending"
+            policy_number = extracted_val
 
 
     host_type = "Superhost" if re.search(r"\bSuperhost\b", full_text, re.IGNORECASE) else "regular"
@@ -446,12 +403,10 @@ class TestCases(unittest.TestCase):
         self.listings = load_listing_results(self.search_results_path)
         self.detailed_data = create_listing_database(self.search_results_path)
 
-    # Tracy
     def test_load_listing_results(self):
         self.assertEqual(len(self.listings), 18)
         self.assertEqual(self.listings[0], ("Loft in Mission District", "1944564"))
 
-    # Tracy
     def test_get_listing_details(self):
         html_list = ["467507", "1550913", "1944564", "4614763", "6092596"]
 
